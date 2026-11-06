@@ -11,6 +11,7 @@ import {
   photoDpi,
   zoomCrop,
 } from "../src/lib/photoMath.ts";
+import { dragPatch, removePhotoPatch, resetCropPatch } from "../src/lib/photoActions.ts";
 
 let failed = 0;
 const near = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -96,6 +97,29 @@ console.log("\n边界判断");
   ok("越界能识别", frameOutsidePanel(out));
   ok("框够大时不报安全区", !frameOutsideSafe(okLayer));
   ok("贴边会报安全区", frameOutsideSafe({ ...okLayer, x: 2 }));
+}
+
+console.log("\ndragPatch —— 分工 1 接 onMove 只需要调这一个");
+{
+  const text = { id: "t1", type: "text", name: "标题", x: 10, y: 20, text: "hi", w: 100, size: 5, font: "sans-cn", weight: 400, color: "#000", align: "left", lineHeight: 1.4, letterSpacing: 0 };
+  const p1 = dragPatch(text, 30, 40);
+  ok("文字：直接改位置", p1.x === 30 && p1.y === 40 && !("crop" in p1));
+
+  const empty = { id: "i1", type: "image", name: "照片", x: 20, y: 30, w: 108, h: 108 };
+  const p2 = dragPatch(empty, 50, 60);
+  ok("空照片框：不动", p2.x === 20 && p2.y === 30);
+
+  const base = coverCrop(4000, 3000, 108, 108);
+  const photo = { ...empty, naturalW: 4000, naturalH: 3000, crop: base };
+  const p3 = dragPatch(photo, 30, 30);
+  ok("照片：位置不变", p3.x === 20 && p3.y === 30);
+  ok("照片：取景被平移", Math.abs(p3.crop.x - (base.x - 10 * (base.w / 108))) < 1e-6);
+  ok("照片：取景尺寸不变", p3.crop.w === base.w && p3.crop.h === base.h);
+
+  const reset = resetCropPatch(photo);
+  ok("复位取景 = cover", Math.abs(reset.crop.w - base.w) < 1e-6);
+  const cleared = removePhotoPatch();
+  ok("移除照片保留框", cleared.src === undefined && cleared.crop === undefined);
 }
 
 console.log(failed === 0 ? "\nOK — 照片计算全部通过" : `\n${failed} 个失败`);

@@ -208,6 +208,12 @@ photoDpi(layer): number            // 给分工 6 的检查用
 frameOutsidePanel(layer): boolean
 frameOutsideSafe(layer): boolean
 
+// src/lib/photoActions.ts —— 动作 → 写回文档的补丁
+dragPatch(layer, nextX, nextY): Record<string, unknown>
+resetCropPatch(layer): Record<string, unknown>
+removePhotoPatch(): Record<string, unknown>
+photoSummary(layer): { width, height, dpi, quality, placeholder }
+
 // src/lib/photo.ts —— 只在这里碰 DOM
 loadPhoto(file): Promise<{ src, width, height, original }>
 ```
@@ -217,16 +223,30 @@ loadPhoto(file): Promise<{ src, width, height, original }>
 
 失败时抛 `PhotoError`，`message` 是可以直接显示给用户的中文句子。
 
+**接入方式（分工 1 只需要改这一处）：** `App.tsx` 的 `onMove` 里把
+
+```ts
+let next: Layer = { ...layer, x, y };
+```
+
+换成
+
+```ts
+const patch = dragPatch(layer, x, y);
+let next: Layer = { ...layer, ...patch } as Layer;
+```
+
+之后文字照旧移动、照片自动变成"移动取景"，原来的 `cropMode` 分支可以整块删掉。
+
 ### 9.3 给分工 6 的
 
-- 分辨率：`photoDpi(layer)`，建议 `< 150` 报错、`150–300` 提醒
+- 分辨率：`photoDpi(layer)`，`< 150` 报错、`150–300` 提醒（已接进 `checks.ts`）
 - 边界：`frameOutsidePanel(layer)` 报错，`frameOutsideSafe(layer)` 提醒
-- 测试素材建议：50×50 小图、6000×4000 大图、带 EXIF 旋转的竖拍 JPG、透明 PNG、改后缀的损坏文件
+- 测试素材：`python scripts/make_fixtures.py` 生成 8 个畸形/正常样本，每个测什么见 `test-fixtures/README.md`
 
-### 9.4 还没做的（等确认）
+### 9.4 状态
 
-- 画布上的拖动语义（拖照片 = 改取景，还是移动照片框）
-- 手机上上传入口的位置
-- 选中照片时是否响应 Delete 键
+已完成：数据层、校验与解码、空框占位、缩放 / 复位 / 移除、检查接入、测试素材、42 条单元测试。
 
-这三条不依赖代码，依赖分工 1 / 2 / 4 的答复。
+**只剩一件事：`App.tsx` 的 `onMove` 接上 `dragPatch`（上面那三行）。**
+`App.tsx` 归分工 1，走 PR，不要直接推 main。

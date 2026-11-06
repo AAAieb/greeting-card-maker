@@ -5,6 +5,7 @@ import { MAX_CHARS, PANEL_LABEL } from "../lib/checks";
 import { FONT_LABELS } from "../data/templates";
 import { OCCASION_LABEL, RELATION_LABEL, TONE_LABEL, suggest } from "../data/greetings";
 import type { Relation, Tone } from "../data/greetings";
+import { photoSummary, removePhotoPatch, resetCropPatch } from "../lib/photoActions";
 
 interface Props {
   doc: CardDoc;
@@ -128,6 +129,8 @@ export default function Inspector(p: Props) {
 
         {selected && selected.type === "image" && (
           <>
+            <PhotoMeta layer={selected as ImageLayer} />
+
             <label className="field">
               <span>{(selected as ImageLayer).src ? "更换照片" : "上传照片"}</span>
               <input
@@ -140,27 +143,47 @@ export default function Inspector(p: Props) {
                 }}
               />
             </label>
-            <button className={p.cropMode ? "btn primary" : "btn"} onClick={p.onToggleCrop}>
-              {p.cropMode ? "完成裁剪" : "调整取景"}
-            </button>
-            {p.cropMode && (
-              <label className="field">
-                <span>缩放 {p.cropZoom.toFixed(2)}×</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  value={p.cropZoom}
-                  onChange={(e) => p.onZoomCrop(Number(e.target.value))}
-                />
-              </label>
+
+            {(selected as ImageLayer).src ? (
+              <>
+                <button className={p.cropMode ? "btn primary" : "btn"} onClick={p.onToggleCrop}>
+                  {p.cropMode ? "完成裁剪" : "调整取景"}
+                </button>
+                {p.cropMode && (
+                  <label className="field" style={{ marginTop: 12 }}>
+                    <span>缩放 {p.cropZoom.toFixed(2)}×</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.01}
+                      value={p.cropZoom}
+                      onChange={(e) => p.onZoomCrop(Number(e.target.value))}
+                    />
+                  </label>
+                )}
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button
+                    className="btn"
+                    onClick={() => p.onLayer(selected.id, resetCropPatch(selected as ImageLayer))}
+                  >
+                    复位取景
+                  </button>
+                  <button className="btn" onClick={() => p.onLayer(selected.id, removePhotoPatch())}>
+                    移除照片
+                  </button>
+                </div>
+                <p className="hint">
+                  {p.cropMode
+                    ? "在画布上拖动照片调整取景，滑块缩放。完成后点“完成裁剪”。"
+                    : "照片始终按原始比例显示，不会被拉伸。支持 JPG / PNG / WebP，8MB 以内。"}
+                </p>
+              </>
+            ) : (
+              <p className="hint">
+                点上面的选择按钮上传照片。支持 JPG / PNG / WebP，8MB 以内，长边至少 320px。
+              </p>
             )}
-            <p className="hint">
-              {p.cropMode
-                ? "在画布上拖动照片调整取景，滑块缩放。完成后点“完成裁剪”。"
-                : "照片始终按原始比例显示，不会被拉伸。支持 JPG / PNG / WebP，8MB 以内。"}
-            </p>
           </>
         )}
 
@@ -243,5 +266,21 @@ export default function Inspector(p: Props) {
         </ul>
       </section>
     </aside>
+  );
+}
+
+function PhotoMeta({ layer }: { layer: ImageLayer }) {
+  const s = photoSummary(layer);
+  if (s.placeholder) {
+    return <p className="hint">这个照片框还是空的。</p>;
+  }
+  return (
+    <div className={`photo-meta ${s.quality}`}>
+      <span>
+        {s.width} × {s.height} px
+      </span>
+      <span>约 {s.dpi} DPI</span>
+      <span>{s.quality === "good" ? "够清楚" : s.quality === "soft" ? "略低" : "太低"}</span>
+    </div>
   );
 }
