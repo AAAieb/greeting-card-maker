@@ -1,0 +1,42 @@
+{
+  "url": "http://localhost:5173/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "steps": [
+    {
+      "step": "首页渲染",
+      "ok": true,
+      "text": "写一张，\n他会留着的贺卡。"
+    },
+    {
+      "step": "点击「开始制作」→ 模板库",
+      "ok": true,
+      "tiles": 6,
+      "heading": "选一张模板"
+    },
+    {
+      "step": "选模板 → 编辑器 + Konva 画布",
+      "ok": true,
+      "canvas": "430x609"
+    },
+    {
+      "step": "切换页签到「内页左」",
+      "ok": true,
+      "activeTab": "内页左"
+    },
+    {
+      "step": "编辑器 → 预览与检查页",
+      "ok": true,
+      "heading": "检查与预览"
+    },
+    {
+      "step": "导出页 → 继续编辑",
+      "ok": true,
+      "backOk": true
+    },
+    {
+      "step": "编辑器 → 返回模板库（可再进入）",
+      "ok": true
+    }
+  ]
+}

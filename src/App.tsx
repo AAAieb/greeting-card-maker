@@ -163,12 +163,13 @@ export default function App() {
     setSelectedId(null);
   };
 
-  if (view === "home" || !doc) {
-    return <Home templateCount={TEMPLATES.length} onStart={goTemplates} />;
-  }
-
+  // 模板页不需要 doc，必须放在 "!doc 回首页" 之前，否则第一次点「开始制作」会被打回首页
   if (view === "templates") {
     return <Gallery assets={assets} onPick={openTemplate} onHome={() => setView("home")} />;
+  }
+
+  if (view === "home" || !doc) {
+    return <Home templateCount={TEMPLATES.length} onStart={goTemplates} />;
   }
 
   if (view === "export") {

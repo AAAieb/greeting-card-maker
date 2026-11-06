@@ -56,7 +56,22 @@ src/
 
 数据格式与协作约定见 [CONTRACT.md](./CONTRACT.md)。
 
+## 分工
+
+| 模块 | 负责 | 主要文件 |
+|---|---|---|
+| ① 框架与整合 | 页面状态机、数据契约、依赖与构建、合并 PR | `src/App.tsx`、`src/types.ts`、`src/state.ts`、`CONTRACT.md` |
+| ② 首页与界面 | 视觉、响应式、文案 | `src/components/Home.tsx`、`src/styles.css` |
+| ③ 模板与内容 | 模板、祝福语、素材 | `src/data/templates.ts`、`src/data/greetings.ts`、`public/assets/templates/` |
+| ④ 文字编辑 | 字体字号颜色对齐、越界提示 | `src/components/Inspector.tsx`（文字区）、`src/lib/renderer.ts` |
+| ⑤ 照片上传与调整 | 上传校验、移动、缩放、不变形 | `src/lib/photo*.ts`、`src/components/Inspector.tsx`（照片区） |
+| ⑥ 预览 / 检查 / 导出 | 检查项、PDF 与图片导出、二维码 | `src/lib/checks.ts`、`src/lib/export.ts`、`src/lib/qr.ts`、`src/components/ExportView.tsx` |
+
+改哪个文件、怎么提交、冲突怎么处理，见 [INTEGRATION.md](./INTEGRATION.md)。
+
 ## 验证
+
+模块一的 15 项验收记录（含截图与修复说明）见 [docs/VERIFY.md](./docs/VERIFY.md)。
 
 ```bash
 pnpm exec esbuild scripts/verify-templates.mjs --bundle --platform=node --format=cjs --outfile=.tmp/v.cjs
