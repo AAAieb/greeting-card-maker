@@ -47,6 +47,8 @@ src/
   data/templates.ts     6 张模板 + 字体栈
   data/greetings.ts     中英祝福语库
   lib/renderer.ts       Konva 绘制（预览与缩略图共用）
+  lib/photo.ts          照片上传：校验、解码、降采样
+  lib/photoMath.ts      取景框 / 分辨率 / 边界的纯计算
   lib/checks.ts         输入检查（空、超长、越界、DPI、对比度）
   lib/thumb.ts          单页渲染成图片（模板缩略图、预览页）
   components/           Home / Gallery / CardStage / Inspector / ExportView
