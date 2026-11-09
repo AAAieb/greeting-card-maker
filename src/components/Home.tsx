@@ -44,23 +44,25 @@ export default function Home({ onStart, templateCount }: Props) {
       </header>
 
       <section className="hero">
-        <p className="eyebrow">校园贺卡编辑器 · {templateCount} 张模板</p>
-        <h1>
-          写一张，
-          <br />
-          他会留着的贺卡。
-        </h1>
-        <p className="lede">
-          给室友、给同学、给写推荐信的老师。选一张模板，改成你自己的话，放一张照片，
-          预览满意就好——剩下的交给打印机。
-        </p>
-        <div className="hero-actions">
-          <button className="btn primary large" onClick={onStart}>
-            开始制作
-          </button>
-          <a className="btn ghost large" href="#how">
-            看看怎么做
-          </a>
+        <div className="hero-copy">
+          <p className="eyebrow">校园贺卡编辑器 · {templateCount} 张模板</p>
+          <h1>
+            写一张，
+            <br />
+            他会留着的贺卡。
+          </h1>
+          <p className="lede">
+            给室友、给同学、给写推荐信的老师。选一张模板，改成你自己的话，放一张照片，
+            预览满意就好——剩下的交给打印机。
+          </p>
+          <div className="hero-actions">
+            <button className="btn primary large" onClick={onStart}>
+              开始制作
+            </button>
+            <a className="btn ghost large" href="#how">
+              看看怎么做
+            </a>
+          </div>
         </div>
         <div className="hero-cards" aria-hidden>
           <div className="mini mini-1">

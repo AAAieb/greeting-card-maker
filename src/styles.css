@@ -222,6 +222,13 @@ h3 {
   height: 380px;
 }
 
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
 .mini {
   position: absolute;
   border-radius: 6px;
