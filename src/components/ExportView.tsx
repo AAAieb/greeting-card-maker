@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import type { CardDoc, PanelKey } from "../types";
+import {
+  useEffect,
+  useState,
+} from "react";
+import type {
+  CardDoc,
+  PanelKey,
+} from "../types";
 import { PANEL_LABEL } from "../lib/checks";
 import type { Issue } from "../lib/checks";
 import type { Assets } from "../lib/renderer";
@@ -10,86 +16,269 @@ interface Props {
   assets: Assets;
   issues: Issue[];
   onEdit: () => void;
-  onPickIssue: (i: Issue) => void;
+  onPickIssue: (issue: Issue) => void;
   onRestart: () => void;
 }
 
-const ORDER: PanelKey[] = ["front", "insideLeft", "insideRight", "back"];
+const ORDER: PanelKey[] = [
+  "front",
+  "insideLeft",
+  "insideRight",
+  "back",
+];
 
-export default function ExportView({ doc, assets, issues, onEdit, onPickIssue, onRestart }: Props) {
-  const [thumbs, setThumbs] = useState<Partial<Record<PanelKey, string>>>({});
-  const errors = issues.filter((i) => i.level === "error");
-  const warns = issues.filter((i) => i.level === "warn");
+export default function ExportView({
+  doc,
+  assets,
+  issues,
+  onEdit,
+  onPickIssue,
+  onRestart,
+}: Props) {
+  const [thumbnails, setThumbnails] =
+    useState<
+      Partial<Record<PanelKey, string>>
+    >({});
+
+  const errors = issues.filter(
+    (issue) => issue.level === "error"
+  );
+
+  const warnings = issues.filter(
+    (issue) => issue.level === "warn"
+  );
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      const next: Partial<Record<PanelKey, string>> = {};
-      for (const p of ORDER) {
-        next[p] = await renderPanelThumb(doc, p, 420, assets);
+    let isActive = true;
+
+    async function createThumbnails() {
+      const nextThumbnails: Partial<
+        Record<PanelKey, string>
+      > = {};
+
+      for (const panel of ORDER) {
+        nextThumbnails[panel] =
+          await renderPanelThumb(
+            doc,
+            panel,
+            420,
+            assets
+          );
       }
-      if (alive) setThumbs(next);
-    })();
+
+      if (isActive) {
+        setThumbnails(nextThumbnails);
+      }
+    }
+
+    createThumbnails();
+
     return () => {
-      alive = false;
+      isActive = false;
     };
   }, [doc, assets]);
 
+  const hasPassed = issues.length === 0;
+
   return (
-    <div className="export-page">
-      <header className="nav">
-        <div className="nav-inner">
-          <button className="brand" onClick={onRestart}>
-            <span className="brand-mark" aria-hidden />
-            Campus Card
+    <div className="refined-export-page">
+      <header className="refined-export-nav">
+        <div className="refined-export-nav-inner">
+          <button
+            className="refined-export-brand"
+            type="button"
+            onClick={onRestart}
+            aria-label="Return to template collection"
+          >
+            <span
+              className="refined-export-brand-mark"
+              aria-hidden="true"
+            >
+              C
+            </span>
+
+            <span>Campus Card</span>
           </button>
-          <div className="spacer" />
-          <button className="btn ghost" onClick={onEdit}>
-            ← 继续编辑
+
+          <button
+            className="refined-export-back"
+            type="button"
+            onClick={onEdit}
+          >
+            <span aria-hidden="true">←</span>
+            Continue editing
           </button>
         </div>
       </header>
 
-      <main className="export-body">
-        <div className="export-head">
-          <h1>检查与预览</h1>
-          <p className="lede">
-            这是折起来之后的样子：正面、两页内页、背面。确认没问题，就可以进入导出环节。
-          </p>
-        </div>
+      <main className="refined-export-main">
+        <section className="refined-export-heading">
+          <div>
+            <p className="refined-export-kicker">
+              <span aria-hidden="true" />
+              Final review
+            </p>
 
-        <div className="export-grid">
-          {ORDER.map((p) => (
-            <figure key={p} className="export-card">
-              <div className="thumb">
-                {thumbs[p] ? <img src={thumbs[p]} alt={PANEL_LABEL[p]} /> : <div className="thumb-skeleton" />}
-              </div>
-              <figcaption>{PANEL_LABEL[p]}</figcaption>
-            </figure>
-          ))}
-        </div>
+            <h1>
+              Ready to make it
+              <br />
+              <em>something real?</em>
+            </h1>
+          </div>
 
-        <section className="export-checks">
-          <h2>
-            检查结果{" "}
-            {issues.length === 0 ? (
-              <span className="ok">全部通过</span>
-            ) : (
-              <span className="count">
-                {errors.length} 个必须处理 · {warns.length} 个提醒
+          <div className="refined-export-summary">
+            <p>
+              Review the front, inside pages and back of
+              your folded card before preparing it to
+              print or share.
+            </p>
+
+            <div
+              className={
+                hasPassed
+                  ? "refined-status passed"
+                  : "refined-status attention"
+              }
+            >
+              <span aria-hidden="true">
+                {hasPassed ? "✓" : "!"}
               </span>
-            )}
-          </h2>
-          {issues.length === 0 ? (
-            <p className="hint">文字都在安全区内，照片够清晰，可以往下走了。</p>
+
+              <div>
+                <strong>
+                  {hasPassed
+                    ? "Ready to continue"
+                    : "Needs attention"}
+                </strong>
+
+                <small>
+                  {hasPassed
+                    ? "All quality checks passed"
+                    : `${errors.length} ${
+                        errors.length === 1
+                          ? "issue"
+                          : "issues"
+                      } and ${warnings.length} ${
+                        warnings.length === 1
+                          ? "warning"
+                          : "warnings"
+                      }`}
+                </small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="refined-preview-section"
+          aria-labelledby="preview-title"
+        >
+          <div className="refined-section-title">
+            <div>
+              <span>01</span>
+              <h2 id="preview-title">
+                Your complete card
+              </h2>
+            </div>
+
+            <p>{doc.templateName}</p>
+          </div>
+
+          <div className="refined-preview-grid">
+            {ORDER.map((panel) => (
+              <figure
+                key={panel}
+                className="refined-preview-card"
+              >
+                <div className="refined-preview-image">
+                  {thumbnails[panel] ? (
+                    <img
+                      src={thumbnails[panel]}
+                      alt={`${PANEL_LABEL[panel]} preview`}
+                    />
+                  ) : (
+                    <div
+                      className="refined-preview-loading"
+                      aria-label={`Loading ${PANEL_LABEL[panel]} preview`}
+                    />
+                  )}
+                </div>
+
+                <figcaption>
+                  <span>{PANEL_LABEL[panel]}</span>
+                  <small>
+                    {panel === "front"
+                      ? "Folded cover"
+                      : panel === "back"
+                        ? "Back cover"
+                        : "Inside panel"}
+                  </small>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="refined-check-section"
+          aria-labelledby="checks-title"
+        >
+          <div className="refined-section-title">
+            <div>
+              <span>02</span>
+              <h2 id="checks-title">
+                Quality check
+              </h2>
+            </div>
+
+            <p>
+              {hasPassed
+                ? "Everything looks good"
+                : "Select an item to fix it"}
+            </p>
+          </div>
+
+          {hasPassed ? (
+            <div className="refined-passed-card">
+              <span
+                className="refined-passed-icon"
+                aria-hidden="true"
+              >
+                ✓
+              </span>
+
+              <div>
+                <h3>Your card is ready</h3>
+
+                <p>
+                  Text is inside the safe area, images are
+                  clear enough for printing and no empty
+                  elements were found.
+                </p>
+              </div>
+            </div>
           ) : (
-            <ul className="issues wide">
-              {issues.map((i) => (
-                <li key={i.key} className={i.level}>
-                  <button onClick={() => onPickIssue(i)}>
-                    <strong>{i.title}</strong>
-                    <span className="where">{PANEL_LABEL[i.panel]}</span>
-                    <span className="detail">{i.detail}</span>
+            <ul className="issues wide refined-issues">
+              {issues.map((issue) => (
+                <li
+                  key={issue.key}
+                  className={issue.level}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onPickIssue(issue)
+                    }
+                  >
+                    <strong>{issue.title}</strong>
+
+                    <span className="where">
+                      {PANEL_LABEL[issue.panel]}
+                    </span>
+
+                    <span className="detail">
+                      {issue.detail}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -97,24 +286,85 @@ export default function ExportView({ doc, assets, issues, onEdit, onPickIssue, o
           )}
         </section>
 
-        <section className="export-actions">
-          <div className="next-up">
-            <strong>下一步：导出</strong>
+        <section className="refined-export-actions">
+          <div className="refined-actions-copy">
+            <p className="refined-export-kicker">
+              <span aria-hidden="true" />
+              Next step
+            </p>
+
+            <h2>Prepare your card to share.</h2>
+
             <p>
-              PDF 与图片导出不在这一个版本里。结构已经留好——这一页之后会接上
-              「导出可打印 PDF」和「导出 PNG」两个按钮。
+              Print-ready PDF and shareable image export
+              will be connected in the next development
+              milestone.
             </p>
           </div>
-          <div className="row">
-            <button className="btn" onClick={onEdit}>
-              回去改一改
+
+          <div className="refined-export-options">
+            <div className="refined-export-option">
+              <span aria-hidden="true">PDF</span>
+
+              <div>
+                <strong>Print-ready PDF</strong>
+                <small>Prepared for A5 folded printing</small>
+              </div>
+
+              <em>Coming next</em>
+            </div>
+
+            <div className="refined-export-option">
+              <span aria-hidden="true">PNG</span>
+
+              <div>
+                <strong>Shareable images</strong>
+                <small>One image for each card panel</small>
+              </div>
+
+              <em>Coming next</em>
+            </div>
+          </div>
+
+          <div className="refined-action-buttons">
+            <button
+              className="refined-primary-action"
+              type="button"
+              onClick={onEdit}
+            >
+              Continue editing
+              <span aria-hidden="true">→</span>
             </button>
-            <button className="btn ghost" onClick={onRestart}>
-              换一张模板
+
+            <button
+              className="refined-secondary-action"
+              type="button"
+              onClick={onRestart}
+            >
+              Choose another template
             </button>
           </div>
         </section>
       </main>
+
+      <footer className="refined-export-footer">
+        <div>
+          <span
+            className="refined-export-brand-mark"
+            aria-hidden="true"
+          >
+            C
+          </span>
+
+          <strong>Campus Card</strong>
+        </div>
+
+        <p>
+          Made for meaningful moments on campus.
+        </p>
+
+        <p>Student project · 2026</p>
+      </footer>
     </div>
   );
 }

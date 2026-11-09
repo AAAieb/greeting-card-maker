@@ -5,111 +5,297 @@ interface Props {
 
 const FEATURES = [
   {
-    title: "校园里的场合",
-    body: "毕业、生日、给老师写一张。模板是照这些场合做的，不是年终大促那种通用贺卡。",
+    number: "01",
+    icon: "✦",
+    title: "Made for campus moments",
+    body: "Thoughtful designs for birthdays, graduations and the teachers who made a difference.",
   },
   {
-    title: "排得准，印得出",
-    body: "版面按毫米算，有安全区和折线。你的字不会跑到裁切线外面，也不会被折痕压住。",
+    number: "02",
+    icon: "Aa",
+    title: "Personal in every detail",
+    body: "Make every card your own with a message, beautiful type, colour and a favourite photo.",
   },
   {
-    title: "五分钟能做完",
-    body: "选模板、改三行字、放一张照片。不用会设计软件，也不用注册账号。",
+    number: "03",
+    icon: "□",
+    title: "Designed to print beautifully",
+    body: "Print-aware layouts, safe areas and live previews help every card come out as intended.",
   },
 ];
 
 const STEPS = [
-  { n: "01", t: "挑一张模板", d: "生日、毕业、感谢老师，每类两张。" },
-  { n: "02", t: "改成你自己的话", d: "收件人、标题、祝福语，字体字号颜色都能调。" },
-  { n: "03", t: "放一张照片", d: "拖动取景、缩放，照片不会被拉变形。" },
+  {
+    number: "01",
+    label: "Choose",
+    title: "Pick a template",
+    body: "Start with a design that fits the person and the moment.",
+  },
+  {
+    number: "02",
+    label: "Create",
+    title: "Make it personal",
+    body: "Add your own words, colours and a favourite photograph.",
+  },
+  {
+    number: "03",
+    label: "Share",
+    title: "Preview and export",
+    body: "Check every detail, then prepare your card to print or share.",
+  },
 ];
 
 export default function Home({ onStart, templateCount }: Props) {
   return (
-    <div className="home">
-      <header className="nav">
-        <div className="nav-inner">
-          <button className="brand" onClick={onStart}>
-            <span className="brand-mark" aria-hidden />
-            Campus Card
+    <div className="landing-page">
+      <header className="landing-nav">
+        <div className="landing-nav-inner">
+          <button
+            className="landing-brand"
+            type="button"
+            onClick={onStart}
+            aria-label="Browse card templates"
+          >
+            <span className="landing-brand-mark" aria-hidden="true">
+              C
+            </span>
+            <span>Campus Card</span>
           </button>
-          <nav className="nav-links">
-            <button onClick={onStart}>模板</button>
-            <a href="#how">怎么用</a>
+
+          <nav className="landing-links" aria-label="Main navigation">
+            <a href="#moments">Moments</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How it works</a>
           </nav>
-          <button className="btn primary" onClick={onStart}>
-            开始制作
+
+          <button
+            className="landing-nav-button"
+            type="button"
+            onClick={onStart}
+          >
+            Create a card
+            <span aria-hidden="true">↗</span>
           </button>
         </div>
       </header>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">校园贺卡编辑器 · {templateCount} 张模板</p>
-          <h1>
-            写一张，
-            <br />
-            他会留着的贺卡。
-          </h1>
-          <p className="lede">
-            给室友、给同学、给写推荐信的老师。选一张模板，改成你自己的话，放一张照片，
-            预览满意就好——剩下的交给打印机。
-          </p>
-          <div className="hero-actions">
-            <button className="btn primary large" onClick={onStart}>
-              开始制作
+      <main>
+        <section className="landing-hero">
+          <div className="landing-hero-copy">
+            <p className="landing-kicker">
+              <span aria-hidden="true" />
+              A card-making studio for university life
+            </p>
+
+            <h1>
+              Turn a campus moment into something{" "}
+              <em>worth keeping.</em>
+            </h1>
+
+            <p className="landing-intro">
+              Create a thoughtful greeting card in minutes. Choose a
+              campus-inspired template, write your message and add a favourite
+              photo — no design experience needed.
+            </p>
+
+            <div className="landing-actions">
+              <button
+                className="landing-primary-button"
+                type="button"
+                onClick={onStart}
+              >
+                Start creating
+                <span aria-hidden="true">→</span>
+              </button>
+
+              <a className="landing-text-link" href="#how-it-works">
+                See how it works
+              </a>
+            </div>
+
+            <ul className="landing-benefits">
+              <li>No account required</li>
+              <li>{templateCount} original templates</li>
+              <li>Print-aware layouts</li>
+            </ul>
+          </div>
+
+          <div
+            className="landing-card-scene"
+            aria-label="Examples of campus greeting cards"
+          >
+            <div
+              className="landing-decoration decoration-one"
+              aria-hidden="true"
+            />
+            <div
+              className="landing-decoration decoration-two"
+              aria-hidden="true"
+            />
+
+            <article className="sample-card sample-card-graduation">
+              <span className="sample-card-category">Graduation</span>
+              <span className="sample-card-symbol" aria-hidden="true">
+                ✦
+              </span>
+              <div>
+                <h2>Here’s to your next chapter.</h2>
+                <p>Class of 2026</p>
+              </div>
+            </article>
+
+            <article className="sample-card sample-card-birthday">
+              <span className="sample-card-category">Birthday</span>
+
+              <div className="sample-photo" aria-hidden="true">
+                <span>
+                  Your
+                  <br />
+                  photo
+                </span>
+              </div>
+
+              <div>
+                <h2>
+                  Another year,
+                  <br />
+                  another adventure.
+                </h2>
+                <p>Make it a good one.</p>
+              </div>
+            </article>
+
+            <article className="sample-card sample-card-thanks">
+              <span className="sample-card-category">Thank you</span>
+              <span className="sample-card-symbol flower" aria-hidden="true">
+                ✿
+              </span>
+              <div>
+                <h2>For helping me grow.</h2>
+                <p>With gratitude</p>
+              </div>
+            </article>
+
+            <div className="template-count-badge">
+              <strong>{templateCount}</strong>
+              <span>
+                original
+                <br />
+                templates
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-moments" id="moments">
+          <p>Made for the moments that shape university life</p>
+
+          <div className="moment-list">
+            <span>Birthdays</span>
+            <i aria-hidden="true">•</i>
+            <span>Graduations</span>
+            <i aria-hidden="true">•</i>
+            <span>Teacher thanks</span>
+            <i aria-hidden="true">•</i>
+            <span>Friendships</span>
+          </div>
+        </section>
+
+        <section className="landing-features" id="features">
+          <div className="landing-section-heading">
+            <p className="landing-kicker">
+              <span aria-hidden="true" />
+              Thoughtful by design
+            </p>
+
+            <h2>
+              Simple to make.
+              <br />
+              <em>Meaningful to receive.</em>
+            </h2>
+          </div>
+
+          <div className="landing-feature-grid">
+            {FEATURES.map((feature) => (
+              <article className="landing-feature-card" key={feature.number}>
+                <span className="feature-number">{feature.number}</span>
+
+                <div className="feature-icon" aria-hidden="true">
+                  {feature.icon}
+                </div>
+
+                <h3>{feature.title}</h3>
+                <p>{feature.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="landing-how" id="how-it-works">
+          <div className="landing-how-intro">
+            <p className="landing-kicker">
+              <span aria-hidden="true" />
+              How it works
+            </p>
+
+            <h2>
+              From blank page to personal card in three easy steps.
+            </h2>
+
+            <button
+              className="landing-light-button"
+              type="button"
+              onClick={onStart}
+            >
+              Browse templates
+              <span aria-hidden="true">→</span>
             </button>
-            <a className="btn ghost large" href="#how">
-              看看怎么做
-            </a>
           </div>
-        </div>
-        <div className="hero-cards" aria-hidden>
-          <div className="mini mini-1">
-            <span>毕业快乐</span>
-          </div>
-          <div className="mini mini-2">
-            <span>生日快乐</span>
-          </div>
-          <div className="mini mini-3">
-            <span>谢谢您</span>
-          </div>
-        </div>
-      </section>
 
-      <section className="features">
-        {FEATURES.map((f) => (
-          <article key={f.title} className="feature">
-            <h3>{f.title}</h3>
-            <p>{f.body}</p>
-          </article>
-        ))}
-      </section>
+          <ol className="landing-step-list">
+            {STEPS.map((step) => (
+              <li key={step.number}>
+                <span className="step-number">{step.number}</span>
 
-      <section className="how" id="how">
-        <h2>三步做完</h2>
-        <ol className="steps">
-          {STEPS.map((s) => (
-            <li key={s.n}>
-              <span className="step-n">{s.n}</span>
-              <strong>{s.t}</strong>
-              <p>{s.d}</p>
-            </li>
-          ))}
-        </ol>
-        <button className="btn primary" onClick={onStart}>
-          选一张模板
-        </button>
-      </section>
+                <div>
+                  <small>{step.label}</small>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      <footer className="footer">
-        <div>
-          <strong>Campus Greeting Card Maker</strong>
-          <p>课程项目 · 校园场景贺卡编辑器</p>
+        <section className="landing-final-callout">
+          <p className="landing-kicker">
+            <span aria-hidden="true" />
+            Your words, beautifully presented
+          </p>
+
+          <h2>Some moments deserve more than a message.</h2>
+
+          <button
+            className="landing-light-button"
+            type="button"
+            onClick={onStart}
+          >
+            Create your card
+            <span aria-hidden="true">→</span>
+          </button>
+        </section>
+      </main>
+
+      <footer className="landing-footer">
+        <div className="landing-footer-brand">
+          <span className="landing-brand-mark" aria-hidden="true">
+            C
+          </span>
+          <strong>Campus Card</strong>
         </div>
-        <p className="footnote">
-          模板与文字由本项目自制，仅用于教学演示。照片版权归上传者所有。
-        </p>
+
+        <p>Made for meaningful moments on campus.</p>
+        <p>Student project · 2026</p>
       </footer>
     </div>
   );

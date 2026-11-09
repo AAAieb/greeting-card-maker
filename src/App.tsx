@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CardDoc, ImageLayer, Layer, PanelKey, TextLayer } from "./types";
+import type {
+  CardDoc,
+  ImageLayer,
+  Layer,
+  PanelKey,
+  TextLayer,
+} from "./types";
 import { PANEL_H, PANEL_W } from "./types";
 import Home from "./components/Home";
 import Gallery from "./components/Gallery";
@@ -8,19 +14,55 @@ import Inspector from "./components/Inspector";
 import ExportView from "./components/ExportView";
 import { runChecks } from "./lib/checks";
 import { TEMPLATES } from "./data/templates";
-import { applyCrop, panCrop, readImageFile, useAssets, useDocHistory } from "./state";
+import {
+  applyCrop,
+  panCrop,
+  readImageFile,
+  useAssets,
+  useDocHistory,
+} from "./state";
 
 type View = "home" | "templates" | "editor" | "export";
 
-const TABS: { key: PanelKey; label: string; hint: string }[] = [
-  { key: "front", label: "正面", hint: "折起来看到的那一面" },
-  { key: "insideLeft", label: "内页左", hint: "翻开后的左半页" },
-  { key: "insideRight", label: "内页右", hint: "翻开后的右半页" },
-  { key: "back", label: "背面", hint: "封底" },
+const TABS: {
+  key: PanelKey;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "front",
+    label: "Front",
+    hint: "The cover shown when the card is folded",
+  },
+  {
+    key: "insideLeft",
+    label: "Inside left",
+    hint: "The left panel inside the open card",
+  },
+  {
+    key: "insideRight",
+    label: "Inside right",
+    hint: "The right panel inside the open card",
+  },
+  {
+    key: "back",
+    label: "Back",
+    hint: "The back cover of the card",
+  },
 ];
 
 export default function App() {
-  const { doc, update, undo, redo, reset, canUndo, canRedo, version } = useDocHistory(null);
+  const {
+    doc,
+    update,
+    undo,
+    redo,
+    reset,
+    canUndo,
+    canRedo,
+    version,
+  } = useDocHistory(null);
+
   const [view, setView] = useState<View>("home");
   const [panel, setPanel] = useState<PanelKey>("front");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -30,42 +72,87 @@ export default function App() {
   const [scale, setScale] = useState(2.7);
 
   const assets = useAssets(doc);
-  const issues = useMemo(() => (doc ? runChecks(doc) : []), [doc, version]);
+
+  const issues = useMemo(
+    () => (doc ? runChecks(doc) : []),
+    [doc, version]
+  );
 
   useEffect(() => {
-    const calc = () => {
-      const w = window.innerWidth;
-      const narrow = w < 980;
-      const availW = narrow ? w - 44 : w - 372 - 70;
-      const byW = availW / PANEL_W;
-      const byH = (window.innerHeight - (narrow ? 150 : 210)) / PANEL_H;
-      const max = narrow ? 2.6 : 2.9;
-      setScale(Math.max(1.1, Math.min(max, byW, narrow ? max : byH)));
+    const calculateScale = () => {
+      const windowWidth = window.innerWidth;
+      const isNarrow = windowWidth < 980;
+
+      const availableWidth = isNarrow
+        ? windowWidth - 44
+        : windowWidth - 372 - 70;
+
+      const scaleByWidth = availableWidth / PANEL_W;
+
+      const scaleByHeight =
+        (window.innerHeight - (isNarrow ? 150 : 210)) / PANEL_H;
+
+      const maximumScale = isNarrow ? 2.6 : 2.9;
+
+      setScale(
+        Math.max(
+          1.1,
+          Math.min(
+            maximumScale,
+            scaleByWidth,
+            isNarrow ? maximumScale : scaleByHeight
+          )
+        )
+      );
     };
-    calc();
-    window.addEventListener("resize", calc);
-    return () => window.removeEventListener("resize", calc);
+
+    calculateScale();
+
+    window.addEventListener("resize", calculateScale);
+
+    return () => {
+      window.removeEventListener("resize", calculateScale);
+    };
   }, []);
 
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3400);
-    return () => clearTimeout(t);
+    if (!toast) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 3400);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [toast]);
 
   const selected: Layer | null = useMemo(() => {
-    if (!doc || !selectedId) return null;
-    return doc.panels[panel].find((l) => l.id === selectedId) ?? null;
+    if (!doc || !selectedId) {
+      return null;
+    }
+
+    return (
+      doc.panels[panel].find(
+        (layer) => layer.id === selectedId
+      ) ?? null
+    );
   }, [doc, panel, selectedId]);
 
   const onLayer = useCallback(
     (id: string, patch: Record<string, unknown>) => {
       update(
-        (d) => ({
-          ...d,
+        (currentDoc) => ({
+          ...currentDoc,
           panels: {
-            ...d.panels,
-            [panel]: d.panels[panel].map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)),
+            ...currentDoc.panels,
+            [panel]: currentDoc.panels[panel].map((layer) =>
+              layer.id === id
+                ? ({ ...layer, ...patch } as Layer)
+                : layer
+            ),
           },
         }),
         true
@@ -76,17 +163,51 @@ export default function App() {
 
   const onMove = useCallback(
     (id: string, x: number, y: number) => {
-      update((d) => {
-        const layer = d.panels[panel].find((l) => l.id === id);
-        if (!layer) return d;
-        let next: Layer = { ...layer, x, y };
-        if (cropMode && layer.type === "image" && layer.crop && layer.naturalW) {
-          const moved = panCrop(layer as ImageLayer, x - layer.x, y - layer.y, layer.naturalW, layer.naturalH ?? 0);
-          next = { ...(layer as ImageLayer), crop: moved.crop, x: layer.x, y: layer.y };
+      update((currentDoc) => {
+        const layer = currentDoc.panels[panel].find(
+          (item) => item.id === id
+        );
+
+        if (!layer) {
+          return currentDoc;
         }
+
+        let nextLayer: Layer = {
+          ...layer,
+          x,
+          y,
+        };
+
+        if (
+          cropMode &&
+          layer.type === "image" &&
+          layer.crop &&
+          layer.naturalW
+        ) {
+          const moved = panCrop(
+            layer as ImageLayer,
+            x - layer.x,
+            y - layer.y,
+            layer.naturalW,
+            layer.naturalH ?? 0
+          );
+
+          nextLayer = {
+            ...(layer as ImageLayer),
+            crop: moved.crop,
+            x: layer.x,
+            y: layer.y,
+          };
+        }
+
         return {
-          ...d,
-          panels: { ...d.panels, [panel]: d.panels[panel].map((l) => (l.id === id ? next : l)) },
+          ...currentDoc,
+          panels: {
+            ...currentDoc.panels,
+            [panel]: currentDoc.panels[panel].map((item) =>
+              item.id === id ? nextLayer : item
+            ),
+          },
         };
       });
     },
@@ -95,10 +216,16 @@ export default function App() {
 
   const onDelete = useCallback(
     (id: string) => {
-      update((d) => ({
-        ...d,
-        panels: { ...d.panels, [panel]: d.panels[panel].filter((l) => l.id !== id) },
+      update((currentDoc) => ({
+        ...currentDoc,
+        panels: {
+          ...currentDoc.panels,
+          [panel]: currentDoc.panels[panel].filter(
+            (layer) => layer.id !== id
+          ),
+        },
       }));
+
       setSelectedId(null);
     },
     [panel, update]
@@ -107,16 +234,29 @@ export default function App() {
   const onUpload = useCallback(
     async (file: File) => {
       if (!selected || selected.type !== "image") {
-        setToast("先选中画布上的照片框，再上传");
+        setToast(
+          "Select a photo frame on the canvas before uploading."
+        );
         return;
       }
+
       try {
         const { src, w, h } = await readImageFile(file);
-        onLayer(selected.id, { src, naturalW: w, naturalH: h, crop: undefined });
+
+        onLayer(selected.id, {
+          src,
+          naturalW: w,
+          naturalH: h,
+          crop: undefined,
+        });
+
         setCropZoom(1);
-        setToast("照片已放入，可以拖动和缩放");
-      } catch (e) {
-        setToast((e as Error).message);
+
+        setToast(
+          "Photo added. Drag or zoom to adjust the crop."
+        );
+      } catch (error) {
+        setToast((error as Error).message);
       }
     },
     [onLayer, selected]
@@ -124,52 +264,96 @@ export default function App() {
 
   const onInsertGreeting = useCallback(
     (text: string) => {
-      update((d) => {
-        const list = d.panels[panel];
+      update((currentDoc) => {
+        const layers = currentDoc.panels[panel];
+
         const target =
-          (list.find((l) => l.id === selectedId && l.type === "text") as TextLayer | undefined) ??
-          (list.find((l) => l.type === "text") as TextLayer | undefined);
-        if (!target) return d;
+          (layers.find(
+            (layer) =>
+              layer.id === selectedId &&
+              layer.type === "text"
+          ) as TextLayer | undefined) ??
+          (layers.find(
+            (layer) => layer.type === "text"
+          ) as TextLayer | undefined);
+
+        if (!target) {
+          return currentDoc;
+        }
+
         return {
-          ...d,
-          panels: { ...d.panels, [panel]: list.map((l) => (l.id === target.id ? { ...l, text } : l)) },
+          ...currentDoc,
+          panels: {
+            ...currentDoc.panels,
+            [panel]: layers.map((layer) =>
+              layer.id === target.id
+                ? { ...layer, text }
+                : layer
+            ),
+          },
         };
       });
-      setToast("已替换为选中的祝福语");
+
+      setToast("The selected message has been added.");
     },
     [panel, selectedId, update]
   );
 
   const onZoomCrop = useCallback(
-    (z: number) => {
-      setCropZoom(z);
-      if (!selected || selected.type !== "image") return;
-      const next = applyCrop(selected as ImageLayer, assets.images, z);
-      onLayer(selected.id, { crop: next.crop });
+    (zoom: number) => {
+      setCropZoom(zoom);
+
+      if (!selected || selected.type !== "image") {
+        return;
+      }
+
+      const next = applyCrop(
+        selected as ImageLayer,
+        assets.images,
+        zoom
+      );
+
+      onLayer(selected.id, {
+        crop: next.crop,
+      });
     },
     [assets.images, onLayer, selected]
   );
 
-  const openTemplate = (d: CardDoc) => {
-    reset(d);
+  const openTemplate = (template: CardDoc) => {
+    reset(template);
     setPanel("front");
     setSelectedId(null);
     setCropMode(false);
     setView("editor");
   };
 
-  const goTemplates = () => {
+  const goToTemplates = () => {
     setView("templates");
     setSelectedId(null);
   };
 
-  // 模板页不需要 doc，必须放在 "!doc 回首页" 之前，否则第一次点「开始制作」会被打回首页
+  /*
+   * The template page does not require an active document.
+   * This condition must stay before the home / !doc condition.
+   */
   if (view === "templates") {
-    return <Gallery assets={assets} onPick={openTemplate} onHome={() => setView("home")} />;
+    return (
+      <Gallery
+        assets={assets}
+        onPick={openTemplate}
+        onHome={() => setView("home")}
+      />
+    );
   }
 
   if (view === "home" || !doc) {
-    return <Home templateCount={TEMPLATES.length} onStart={goTemplates} />;
+    return (
+      <Home
+        templateCount={TEMPLATES.length}
+        onStart={goToTemplates}
+      />
+    );
   }
 
   if (view === "export") {
@@ -179,12 +363,12 @@ export default function App() {
         assets={assets}
         issues={issues}
         onEdit={() => setView("editor")}
-        onPickIssue={(i) => {
-          setPanel(i.panel);
-          setSelectedId(i.layerId ?? null);
+        onPickIssue={(issue) => {
+          setPanel(issue.panel);
+          setSelectedId(issue.layerId ?? null);
           setView("editor");
         }}
-        onRestart={goTemplates}
+        onRestart={goToTemplates}
       />
     );
   }
@@ -192,39 +376,67 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="btn ghost" onClick={goTemplates}>
-          ← 模板
+        <button
+          className="btn ghost"
+          type="button"
+          onClick={goToTemplates}
+        >
+          ← Templates
         </button>
+
         <div className="doc-name">
           <strong>{doc.templateName}</strong>
-          <span>A5 折卡 · 展开 297 × 210 mm</span>
+          <span>A5 folded card · 297 × 210 mm</span>
         </div>
+
         <div className="spacer" />
-        <button className="btn ghost" onClick={undo} disabled={!canUndo}>
-          撤销
+
+        <button
+          className="btn ghost"
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+        >
+          Undo
         </button>
-        <button className="btn ghost" onClick={redo} disabled={!canRedo}>
-          重做
+
+        <button
+          className="btn ghost"
+          type="button"
+          onClick={redo}
+          disabled={!canRedo}
+        >
+          Redo
         </button>
-        <button className="btn primary" onClick={() => setView("export")}>
-          预览与检查
+
+        <button
+          className="btn primary"
+          type="button"
+          onClick={() => setView("export")}
+        >
+          Preview &amp; check
         </button>
       </header>
 
       <main className="workspace">
         <div className="canvas-col">
-          <div className="tabs">
-            {TABS.map((t) => (
+          <div className="tabs" aria-label="Card panels">
+            {TABS.map((tab) => (
               <button
-                key={t.key}
-                className={panel === t.key ? "tab active" : "tab"}
+                key={tab.key}
+                className={
+                  panel === tab.key
+                    ? "tab active"
+                    : "tab"
+                }
+                type="button"
                 onClick={() => {
-                  setPanel(t.key);
+                  setPanel(tab.key);
                   setSelectedId(null);
                 }}
-                title={t.hint}
+                title={tab.hint}
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -239,7 +451,10 @@ export default function App() {
             onMove={onMove}
           />
 
-          <p className="canvas-note">蓝虚线是安全区（距裁切 8mm），红框是裁切线。拖动元素可改位置。</p>
+          <p className="canvas-note">
+            The blue dashed line marks the safe area,
+            8 mm from the trim. Drag an element to reposition it.
+          </p>
         </div>
 
         <Inspector
@@ -249,20 +464,26 @@ export default function App() {
           issues={issues}
           cropMode={cropMode}
           cropZoom={cropZoom}
-          onToggleCrop={() => setCropMode((v) => !v)}
+          onToggleCrop={() => {
+            setCropMode((current) => !current);
+          }}
           onLayer={onLayer}
           onDelete={onDelete}
           onUpload={onUpload}
-          onPickIssue={(i) => {
-            setPanel(i.panel);
-            setSelectedId(i.layerId ?? null);
+          onPickIssue={(issue) => {
+            setPanel(issue.panel);
+            setSelectedId(issue.layerId ?? null);
           }}
           onInsertGreeting={onInsertGreeting}
           onZoomCrop={onZoomCrop}
         />
       </main>
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

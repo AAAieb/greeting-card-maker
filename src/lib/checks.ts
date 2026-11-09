@@ -1,7 +1,19 @@
-import type { CardDoc, Layer, PanelKey, TextLayer } from "../types";
-import { PANEL_H, PANEL_W, SAFE } from "../types";
+import type {
+  CardDoc,
+  Layer,
+  PanelKey,
+  TextLayer,
+} from "../types";
+import {
+  PANEL_H,
+  PANEL_W,
+  SAFE,
+} from "../types";
 import { FONT_STACKS } from "../data/templates";
-import { frameOutsidePanel, photoDpi } from "./photoMath";
+import {
+  frameOutsidePanel,
+  photoDpi,
+} from "./photoMath";
 
 export type IssueLevel = "error" | "warn";
 
@@ -14,273 +26,392 @@ export interface Issue {
   detail: string;
 }
 
-export const PANEL_LABEL: Record<PanelKey, string> = {
-  front: "正面",
-  insideLeft: "内页左",
-  insideRight: "内页右",
-  back: "背面",
+export const PANEL_LABEL: Record<
+  PanelKey,
+  string
+> = {
+  front: "Front",
+  insideLeft: "Inside left",
+  insideRight: "Inside right",
+  back: "Back",
 };
 
-/** 每个文字层允许的最大字符数 */
+/** Maximum number of characters allowed in a text layer. */
 export const MAX_CHARS = 200;
 
-let ctx: CanvasRenderingContext2D | null = null;
-function measureCtx() {
-  if (!ctx) ctx = document.createElement("canvas").getContext("2d");
-  return ctx!;
+let context: CanvasRenderingContext2D | null = null;
+
+function getMeasurementContext() {
+  if (!context) {
+    context = document
+      .createElement("canvas")
+      .getContext("2d");
+  }
+
+  return context!;
 }
 
-/** 贪心换行，中英混排都适用；返回值单位与 fontSize 相同（毫米） */
+/**
+ * Wrap text using the available width.
+ * Returned measurements use the same unit as the font size.
+ */
 export function wrapText(
   text: string,
   font: string,
   size: number,
   weight: number,
-  maxW: number
+  maxWidth: number
 ): string[] {
-  const c = measureCtx();
-  c.font = `${weight >= 600 ? "bold " : ""}${size}px ${font}`;
+  const measurementContext =
+    getMeasurementContext();
+
+  measurementContext.font =
+    `${weight >= 600 ? "bold " : ""}` +
+    `${size}px ${font}`;
+
   const lines: string[] = [];
-  for (const para of text.split("\n")) {
-    if (!para) {
+
+  for (const paragraph of text.split("\n")) {
+    if (!paragraph) {
       lines.push("");
       continue;
     }
+
     let line = "";
-    for (const ch of para) {
-      const next = line + ch;
-      if (c.measureText(next).width > maxW && line) {
-        if (/[，。、；：！？,.;:!?）】」』]/.test(ch)) {
-          lines.push(line.trimEnd() + ch);
+
+    for (const character of paragraph) {
+      const nextLine = line + character;
+
+      if (
+        measurementContext.measureText(nextLine)
+          .width > maxWidth &&
+        line
+      ) {
+        if (
+          /[，。、；：！？,.;:!?）】」』]/.test(
+            character
+          )
+        ) {
+          lines.push(
+            line.trimEnd() + character
+          );
+
           line = "";
         } else {
           lines.push(line.trimEnd());
-          line = ch;
+          line = character;
         }
       } else {
-        line = next;
+        line = nextLine;
       }
     }
+
     lines.push(line.trimEnd());
   }
+
   return lines;
 }
 
-export function textHeight(l: TextLayer) {
-  const lines = wrapText(l.text, FONT_STACKS[l.font], l.size, l.weight, l.w);
-  return Math.max(1, lines.length) * l.size * l.lineHeight;
+export function textHeight(layer: TextLayer) {
+  const lines = wrapText(
+    layer.text,
+    FONT_STACKS[layer.font],
+    layer.size,
+    layer.weight,
+    layer.w
+  );
+
+  return (
+    Math.max(1, lines.length) *
+    layer.size *
+    layer.lineHeight
+  );
 }
 
 function luminance(hex: string) {
-  const h = hex.replace("#", "").trim();
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
-  const n = parseInt(full, 16);
-  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  const value = hex
+    .replace("#", "")
+    .trim();
+
+  const fullValue =
+    value.length === 3
+      ? value
+          .split("")
+          .map((character) => character + character)
+          .join("")
+      : value.slice(0, 6);
+
+  const numericValue =
+    parseInt(fullValue, 16);
+
+  const channels = [
+    (numericValue >> 16) & 255,
+    (numericValue >> 8) & 255,
+    numericValue & 255,
+  ].map((channel) => {
+    const normalised = channel / 255;
+
+    return normalised <= 0.03928
+      ? normalised / 12.92
+      : Math.pow(
+          (normalised + 0.055) / 1.055,
+          2.4
+        );
   });
-  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+
+  return (
+    0.2126 * channels[0] +
+    0.7152 * channels[1] +
+    0.0722 * channels[2]
+  );
 }
 
-function contrast(a: string, b: string) {
-  const la = luminance(a);
-  const lb = luminance(b);
-  const hi = Math.max(la, lb);
-  const lo = Math.min(la, lb);
-  return (hi + 0.05) / (lo + 0.05);
+function contrast(
+  firstColour: string,
+  secondColour: string
+) {
+  const firstLuminance =
+    luminance(firstColour);
+
+  const secondLuminance =
+    luminance(secondColour);
+
+  const highest = Math.max(
+    firstLuminance,
+    secondLuminance
+  );
+
+  const lowest = Math.min(
+    firstLuminance,
+    secondLuminance
+  );
+
+  return (
+    (highest + 0.05) /
+    (lowest + 0.05)
+  );
 }
 
-const trim = (s: string, n = 10) => {
-  const t = s.replace(/\s+/g, " ").trim();
-  return t.length > n ? t.slice(0, n) + "…" : t;
+const shorten = (
+  text: string,
+  maximumLength = 18
+) => {
+  const normalised = text
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalised.length > maximumLength
+    ? normalised.slice(0, maximumLength) + "…"
+    : normalised;
 };
 
-type Box = { x: number; y: number; w: number; h: number };
+type Box = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
 
-function outside(b: Box, pad = 0) {
-  return b.x < pad || b.y < pad || b.x + b.w > PANEL_W - pad || b.y + b.h > PANEL_H - pad;
+function isOutside(
+  box: Box,
+  padding = 0
+) {
+  return (
+    box.x < padding ||
+    box.y < padding ||
+    box.x + box.w >
+      PANEL_W - padding ||
+    box.y + box.h >
+      PANEL_H - padding
+  );
 }
 
-/** 形状的包围盒，用来判断文字压在哪块颜色上 */
-function shapeBox(l: Layer): Box | null {
-  if (l.type !== "shape") return null;
-  if (l.shape === "rect" || l.shape === "circle") {
-    return { x: l.x, y: l.y, w: l.w, h: l.h };
-  }
-  if (l.shape === "polygon" && l.points && l.points.length >= 6) {
-    const xs: number[] = [];
-    const ys: number[] = [];
-    for (let i = 0; i < l.points.length; i += 2) {
-      xs.push(l.points[i]);
-      ys.push(l.points[i + 1]);
-    }
-    const minX = Math.min(...xs);
-    const minY = Math.min(...ys);
-    return { x: minX, y: minY, w: Math.max(...xs) - minX, h: Math.max(...ys) - minY };
-  }
-  return null;
-}
+export function runChecks(
+  doc: CardDoc
+): Issue[] {
+  const issues: Issue[] = [];
 
-function intersectionArea(a: Box, b: Box) {
-  const x0 = Math.max(a.x, b.x);
-  const y0 = Math.max(a.y, b.y);
-  const x1 = Math.min(a.x + a.w, b.x + b.w);
-  const y1 = Math.min(a.y + a.h, b.y + b.h);
-  return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
-}
+  const panels: PanelKey[] = [
+    "front",
+    "insideLeft",
+    "insideRight",
+    "back",
+  ];
 
-/**
- * 文字下方实际是什么颜色。
- * 取覆盖文字框面积最大的那个填充形状（后画的优先级更高），没有就用页面底色。
- * 之前直接用 theme.bg，于是压在色块上的白字会被误报成「1.0:1」。
- */
-function backgroundUnder(layers: Layer[], box: Box, fallback: string): string {
-  const area = Math.max(1, box.w * box.h);
-  let best = fallback;
-  let bestCover = 0;
-  for (const l of layers) {
-    if (l.type !== "shape" || !l.fill) continue;
-    if (l.fill.length === 9) continue; // #RRGGBBAA，透明填充
-    const sb = shapeBox(l);
-    if (!sb) continue;
-    const cover = intersectionArea(box, sb) / area;
-    if (cover >= 0.5 && cover >= bestCover) {
-      best = l.fill;
-      bestCover = cover;
-    }
-  }
-  return best;
-}
+  for (const panel of panels) {
+    const panelLabel =
+      PANEL_LABEL[panel];
 
-/** WCAG 2.1：大字号（≥18pt ≈ 6mm）3:1，正文 4.5:1 */
-function minContrast(sizeMm: number) {
-  return sizeMm >= 6 ? 3 : 4.5;
-}
+    for (
+      const layer of doc.panels[
+        panel
+      ] as Layer[]
+    ) {
+      if (layer.type === "text") {
+        const text = layer.text.trim();
 
-export function runChecks(doc: CardDoc): Issue[] {
-  const out: Issue[] = [];
-  const panels: PanelKey[] = ["front", "insideLeft", "insideRight", "back"];
-
-  for (const p of panels) {
-    const label = PANEL_LABEL[p];
-
-    for (const l of doc.panels[p] as Layer[]) {
-      if (l.type === "text") {
-        const text = l.text.trim();
-        const box: Box = { x: l.x, y: l.y, w: l.w, h: textHeight(l) };
+        const box: Box = {
+          x: layer.x,
+          y: layer.y,
+          w: layer.w,
+          h: textHeight(layer),
+        };
 
         if (!text) {
-          out.push({
-            key: `${l.id}-empty`,
+          issues.push({
+            key: `${layer.id}-empty`,
             level: "error",
-            panel: p,
-            layerId: l.id,
-            title: "有文字是空的",
-            detail: `${label}：这里原本要写内容，现在删空了，打印出来会是一块空白。`,
+            panel,
+            layerId: layer.id,
+            title: "Empty text element",
+            detail:
+              `${panelLabel}: this text element is empty ` +
+              "and will leave a blank area when printed.",
           });
+
           continue;
         }
 
-        if (l.text.length > MAX_CHARS) {
-          out.push({
-            key: `${l.id}-long`,
+        if (
+          layer.text.length >
+          MAX_CHARS
+        ) {
+          issues.push({
+            key: `${layer.id}-long`,
             level: "error",
-            panel: p,
-            layerId: l.id,
-            title: "文字太长",
-            detail: `${label}：${l.text.length} 字，上限 ${MAX_CHARS} 字。删短一点，或者拆成两段。`,
+            panel,
+            layerId: layer.id,
+            title: "Text is too long",
+            detail:
+              `${panelLabel}: this element contains ` +
+              `${layer.text.length} characters. ` +
+              `The maximum is ${MAX_CHARS}. ` +
+              "Shorten it or divide it into two sections.",
           });
         }
 
-        if (outside(box)) {
-          out.push({
-            key: `${l.id}-out`,
+        if (isOutside(box)) {
+          issues.push({
+            key: `${layer.id}-out`,
             level: "error",
-            panel: p,
-            layerId: l.id,
-            title: "文字超出画布",
-            detail: `${label}的「${trim(text)}」已经跑到卡片外面，导出后会被裁掉。`,
+            panel,
+            layerId: layer.id,
+            title: "Text extends beyond the card",
+            detail:
+              `${panelLabel}: “${shorten(text)}” ` +
+              "extends outside the card and will be cropped when exported.",
           });
-        } else if (outside(box, SAFE)) {
-          out.push({
-            key: `${l.id}-safe`,
+        } else if (
+          isOutside(box, SAFE)
+        ) {
+          issues.push({
+            key: `${layer.id}-safe`,
             level: "warn",
-            panel: p,
-            layerId: l.id,
-            title: "文字太靠近裁切线",
-            detail: `${label}的「${trim(text)}」离边缘不足 ${SAFE}mm，裁切时可能被切掉。`,
+            panel,
+            layerId: layer.id,
+            title: "Text is too close to the trim",
+            detail:
+              `${panelLabel}: “${shorten(text)}” ` +
+              `is less than ${SAFE} mm from the edge and may be cut during printing.`,
           });
-        } else if (p === "insideLeft" && box.x + box.w > PANEL_W - 6) {
-          out.push({
-            key: `${l.id}-fold`,
+        } else if (
+          panel === "insideLeft" &&
+          box.x + box.w >
+            PANEL_W - 6
+        ) {
+          issues.push({
+            key: `${layer.id}-fold`,
             level: "warn",
-            panel: p,
-            layerId: l.id,
-            title: "文字压到了折线",
-            detail: "内页左侧的文字离折线太近，折起来会拱起。",
+            panel,
+            layerId: layer.id,
+            title: "Text is too close to the fold",
+            detail:
+              "Text on the inside-left panel is too close to the fold and may become difficult to read.",
           });
         }
 
-        const under = backgroundUnder(doc.panels[p], box, doc.theme.bg);
-        const need = minContrast(l.size);
-        const ratio = contrast(l.color, under);
-        if (ratio < need) {
-          out.push({
-            key: `${l.id}-contrast`,
+        const contrastRatio = contrast(
+          layer.color,
+          doc.theme.bg
+        );
+
+        if (contrastRatio < 3) {
+          issues.push({
+            key: `${layer.id}-contrast`,
             level: "warn",
-            panel: p,
-            layerId: l.id,
-            title: "文字和背景太接近",
-            detail: `「${trim(text)}」和它下面的颜色只有 ${ratio.toFixed(1)}:1，低于 ${need}:1，打印后可能看不清。`,
+            panel,
+            layerId: layer.id,
+            title: "Low text contrast",
+            detail:
+              `“${shorten(text)}” has a contrast ratio of only ` +
+              `${contrastRatio.toFixed(1)}:1 against the background. ` +
+              "It may be difficult to read when printed.",
           });
         }
       }
 
-      if (l.type === "image") {
-        if (!l.src) {
-          out.push({
-            key: `${l.id}-none`,
+      if (layer.type === "image") {
+        if (!layer.src) {
+          issues.push({
+            key: `${layer.id}-none`,
             level: "warn",
-            panel: p,
-            layerId: l.id,
-            title: "还没有上传照片",
-            detail: `${label}留了一个照片位。选中它上传一张，或者删掉这个照片框。`,
+            panel,
+            layerId: layer.id,
+            title: "Photo has not been added",
+            detail:
+              `${panelLabel} contains an empty photo frame. ` +
+              "Upload a photo or remove the frame.",
           });
         } else {
-          const dpi = photoDpi(l);
+          const dpi =
+            photoDpi(layer);
+
           if (dpi > 0 && dpi < 150) {
-            out.push({
-              key: `${l.id}-blur`,
+            issues.push({
+              key: `${layer.id}-blur`,
               level: "error",
-              panel: p,
-              layerId: l.id,
-              title: "照片分辨率太低",
-              detail: `按这个尺寸打印只有约 ${Math.round(dpi)} DPI，会明显发糊。换一张更大的图，或把照片框缩小。`,
+              panel,
+              layerId: layer.id,
+              title: "Photo resolution is too low",
+              detail:
+                `At its current size, this photo will print at approximately ` +
+                `${Math.round(dpi)} DPI and may look noticeably blurred. ` +
+                "Use a larger image or reduce the size of the photo frame.",
             });
-          } else if (dpi > 0 && dpi < 300) {
-            out.push({
-              key: `${l.id}-soft`,
+          } else if (
+            dpi > 0 &&
+            dpi < 300
+          ) {
+            issues.push({
+              key: `${layer.id}-soft`,
               level: "warn",
-              panel: p,
-              layerId: l.id,
-              title: "照片清晰度偏低",
-              detail: `当前约 ${Math.round(dpi)} DPI，印刷一般需要 300 DPI。`,
+              panel,
+              layerId: layer.id,
+              title: "Photo quality may be low",
+              detail:
+                `The current resolution is approximately ` +
+                `${Math.round(dpi)} DPI. ` +
+                "High-quality printing normally requires 300 DPI.",
             });
           }
         }
-        if (frameOutsidePanel(l)) {
-          out.push({
-            key: `${l.id}-out`,
+
+        if (
+          frameOutsidePanel(layer)
+        ) {
+          issues.push({
+            key: `${layer.id}-out`,
             level: "error",
-            panel: p,
-            layerId: l.id,
-            title: "照片超出画布",
-            detail: `${label}的照片有一部分在卡片外面，会被裁掉。`,
+            panel,
+            layerId: layer.id,
+            title: "Photo extends beyond the card",
+            detail:
+              `${panelLabel}: part of this photo frame is outside the card and will be cropped.`,
           });
         }
       }
     }
   }
 
-  return out;
+  return issues;
 }
