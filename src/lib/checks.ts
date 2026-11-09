@@ -101,6 +101,62 @@ function outside(b: Box, pad = 0) {
   return b.x < pad || b.y < pad || b.x + b.w > PANEL_W - pad || b.y + b.h > PANEL_H - pad;
 }
 
+/** 形状的包围盒，用来判断文字压在哪块颜色上 */
+function shapeBox(l: Layer): Box | null {
+  if (l.type !== "shape") return null;
+  if (l.shape === "rect" || l.shape === "circle") {
+    return { x: l.x, y: l.y, w: l.w, h: l.h };
+  }
+  if (l.shape === "polygon" && l.points && l.points.length >= 6) {
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (let i = 0; i < l.points.length; i += 2) {
+      xs.push(l.points[i]);
+      ys.push(l.points[i + 1]);
+    }
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    return { x: minX, y: minY, w: Math.max(...xs) - minX, h: Math.max(...ys) - minY };
+  }
+  return null;
+}
+
+function intersectionArea(a: Box, b: Box) {
+  const x0 = Math.max(a.x, b.x);
+  const y0 = Math.max(a.y, b.y);
+  const x1 = Math.min(a.x + a.w, b.x + b.w);
+  const y1 = Math.min(a.y + a.h, b.y + b.h);
+  return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+}
+
+/**
+ * 文字下方实际是什么颜色。
+ * 取覆盖文字框面积最大的那个填充形状（后画的优先级更高），没有就用页面底色。
+ * 之前直接用 theme.bg，于是压在色块上的白字会被误报成「1.0:1」。
+ */
+function backgroundUnder(layers: Layer[], box: Box, fallback: string): string {
+  const area = Math.max(1, box.w * box.h);
+  let best = fallback;
+  let bestCover = 0;
+  for (const l of layers) {
+    if (l.type !== "shape" || !l.fill) continue;
+    if (l.fill.length === 9) continue; // #RRGGBBAA，透明填充
+    const sb = shapeBox(l);
+    if (!sb) continue;
+    const cover = intersectionArea(box, sb) / area;
+    if (cover >= 0.5 && cover >= bestCover) {
+      best = l.fill;
+      bestCover = cover;
+    }
+  }
+  return best;
+}
+
+/** WCAG 2.1：大字号（≥18pt ≈ 6mm）3:1，正文 4.5:1 */
+function minContrast(sizeMm: number) {
+  return sizeMm >= 6 ? 3 : 4.5;
+}
+
 export function runChecks(doc: CardDoc): Issue[] {
   const out: Issue[] = [];
   const panels: PanelKey[] = ["front", "insideLeft", "insideRight", "back"];
@@ -165,14 +221,17 @@ export function runChecks(doc: CardDoc): Issue[] {
           });
         }
 
-        if (contrast(l.color, doc.theme.bg) < 3) {
+        const under = backgroundUnder(doc.panels[p], box, doc.theme.bg);
+        const need = minContrast(l.size);
+        const ratio = contrast(l.color, under);
+        if (ratio < need) {
           out.push({
             key: `${l.id}-contrast`,
             level: "warn",
             panel: p,
             layerId: l.id,
             title: "文字和背景太接近",
-            detail: `「${trim(text)}」和底色的对比度只有 ${contrast(l.color, doc.theme.bg).toFixed(1)}:1，打印后可能看不清。`,
+            detail: `「${trim(text)}」和它下面的颜色只有 ${ratio.toFixed(1)}:1，低于 ${need}:1，打印后可能看不清。`,
           });
         }
       }
